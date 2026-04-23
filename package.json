@@ -1,0 +1,17 @@
+{
+  "name": "bl-free-e2e",
+  "version": "1.0.0",
+  "description": "Environment-independent end-to-end test suite for the BetterLinks (Free) WordPress plugin. Self-seeded, Pro-independent.",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:auth": "playwright test --project=auth-setup",
+    "test:headed": "playwright test --headed",
+    "test:debug": "PWDEBUG=1 playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "dotenv": "^17.4.1"
+  }
+}
