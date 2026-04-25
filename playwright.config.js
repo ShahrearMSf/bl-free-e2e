@@ -15,8 +15,14 @@ module.exports = defineConfig({
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:8080',
     ignoreHTTPSErrors: true,
-    screenshot: 'only-on-failure',
-    trace: 'on-first-retry',
+    //   - screenshot: 'on'              → end-of-test screenshot for every test
+    //                                      (so passing tests still have visual proof in the report)
+    //   - trace: 'retain-on-failure'    → trace.zip kept only when a test fails
+    //                                      (browseable timeline + network + DOM in viewer)
+    //   - video: 'retain-on-failure'    → screencast kept only when a test fails
+    //                                      (no overhead on passing runs)
+    screenshot: 'on',
+    trace: 'retain-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 20_000,
     navigationTimeout: 45_000,
