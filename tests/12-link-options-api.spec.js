@@ -3,7 +3,7 @@
  * uncloaked. Free supports all of these at the DB/REST layer.
  */
 const { test, expect } = require('@playwright/test');
-const { uniqueSlug } = require('../helpers/utils');
+const { uniqueSlug, waitForBLRoot } = require('../helpers/utils');
 const { createLink, getRestNonce, listLinks } = require('../helpers/api');
 
 async function flatLinks(list) {
@@ -34,6 +34,14 @@ async function createLinkWithOptions(page, params) {
 test.describe('Link options via REST — free', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/wp-admin/', { waitUntil: 'domcontentloaded' });
+  });
+
+  // Land on the Manage Links UI so end-of-test screenshots show real BL state.
+  test.afterEach(async ({ page }) => {
+    try {
+      await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
+      await waitForBLRoot(page).catch(() => {});
+    } catch { /* best-effort for screenshot */ }
   });
 
   test('nofollow=1 persists', async ({ page }) => {

@@ -3,6 +3,7 @@
  * admin React + integrations depend on.
  */
 const { test, expect } = require('@playwright/test');
+const { waitForBLRoot } = require('../helpers/utils');
 
 async function getNonce(page) {
   return await page.evaluate(async () => {
@@ -27,6 +28,13 @@ async function listRoutes(page) {
 test.describe('REST contract — free', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/wp-admin/', { waitUntil: 'domcontentloaded' });
+  });
+
+  test.afterEach(async ({ page }) => {
+    try {
+      await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
+      await waitForBLRoot(page).catch(() => {});
+    } catch { /* best-effort for screenshot */ }
   });
 
   test('namespace discovery works', async ({ page }) => {

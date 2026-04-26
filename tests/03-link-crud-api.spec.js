@@ -3,7 +3,7 @@
  * they don't depend on the React UI reaching a specific state.
  */
 const { test, expect } = require('@playwright/test');
-const { uniqueSlug } = require('../helpers/utils');
+const { uniqueSlug, waitForBLRoot } = require('../helpers/utils');
 const { createLink, listLinks, deleteLink } = require('../helpers/api');
 
 async function flatLinks(list) {
@@ -20,6 +20,15 @@ async function flatLinks(list) {
 test.describe('Link CRUD via REST API', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/wp-admin/', { waitUntil: 'domcontentloaded' });
+  });
+
+  // After each REST-only test, render the Manage Links UI so the auto-screenshot
+  // shows the actual link table state — instead of a generic /wp-admin/ shot.
+  test.afterEach(async ({ page }) => {
+    try {
+      await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
+      await waitForBLRoot(page).catch(() => {});
+    } catch { /* nav best-effort for screenshot */ }
   });
 
   test('create link → appears in list', async ({ page }) => {

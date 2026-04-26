@@ -11,6 +11,12 @@ const { test, expect, request } = require('@playwright/test');
 const { uniqueSlug } = require('../helpers/utils');
 const { createLink, getRestNonce, deleteLink } = require('../helpers/api');
 
+async function proveRedirectOnPage(page, slug, query = '') {
+  try {
+    await page.goto(`/${slug}${query}`, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+  } catch { /* destination may be unreachable from CI */ }
+}
+
 test.describe('Frontend — redirect with options', () => {
   const trash = [];
   test.afterAll(async ({ browser }) => {
@@ -34,12 +40,12 @@ test.describe('Frontend — redirect with options', () => {
     }, { nonce, params });
   }
 
-  test('link with nofollow=1 still redirects', async ({ browser, baseURL }) => {
+  test('link with nofollow=1 still redirects', async ({ browser, baseURL, page }) => {
     const ctx = await browser.newContext({ storageState: 'playwright/.auth/admin.json' });
-    const page = await ctx.newPage();
-    await page.goto('/wp-admin/');
+    const adminPage = await ctx.newPage();
+    await adminPage.goto('/wp-admin/');
     const slug = uniqueSlug('fnf');
-    const body = await createWithOpts(page, {
+    const body = await createWithOpts(adminPage, {
       link_title: `FE NoFollow ${slug}`, short_url: slug, target_url: 'https://example.com/nf',
       redirect_type: '301', link_status: 'publish', cat_id: 1, nofollow: '1',
     });
@@ -51,14 +57,16 @@ test.describe('Frontend — redirect with options', () => {
     expect([301, 302, 307]).toContain(resp.status());
     expect(resp.headers()['location']).toContain('example.com/nf');
     await api.dispose();
+
+    await proveRedirectOnPage(page, slug);
   });
 
-  test('link with param_forwarding=1 preserves incoming query string', async ({ browser, baseURL }) => {
+  test('link with param_forwarding=1 preserves incoming query string', async ({ browser, baseURL, page }) => {
     const ctx = await browser.newContext({ storageState: 'playwright/.auth/admin.json' });
-    const page = await ctx.newPage();
-    await page.goto('/wp-admin/');
+    const adminPage = await ctx.newPage();
+    await adminPage.goto('/wp-admin/');
     const slug = uniqueSlug('fpfw');
-    const body = await createWithOpts(page, {
+    const body = await createWithOpts(adminPage, {
       link_title: `FE ParamFwd ${slug}`, short_url: slug, target_url: 'https://example.com/path',
       redirect_type: '301', link_status: 'publish', cat_id: 1, param_forwarding: '1',
     });
@@ -69,18 +77,19 @@ test.describe('Frontend — redirect with options', () => {
     const resp = await api.get(`/${slug}?utm_source=free-e2e&ref=probe`, { maxRedirects: 0 });
     expect([301, 302, 307]).toContain(resp.status());
     const loc = resp.headers()['location'];
-    // With param_forwarding enabled, incoming params should appear in Location
     expect(loc).toMatch(/utm_source=free-e2e/);
     expect(loc).toMatch(/ref=probe/);
     await api.dispose();
+
+    await proveRedirectOnPage(page, slug, '?utm_source=free-e2e&ref=probe');
   });
 
-  test('link with param_forwarding=0 does NOT forward query string', async ({ browser, baseURL }) => {
+  test('link with param_forwarding=0 does NOT forward query string', async ({ browser, baseURL, page }) => {
     const ctx = await browser.newContext({ storageState: 'playwright/.auth/admin.json' });
-    const page = await ctx.newPage();
-    await page.goto('/wp-admin/');
+    const adminPage = await ctx.newPage();
+    await adminPage.goto('/wp-admin/');
     const slug = uniqueSlug('fnopfw');
-    const body = await createWithOpts(page, {
+    const body = await createWithOpts(adminPage, {
       link_title: `FE NoParamFwd ${slug}`, short_url: slug, target_url: 'https://example.com/clean',
       redirect_type: '301', link_status: 'publish', cat_id: 1, param_forwarding: '',
     });
@@ -93,5 +102,7 @@ test.describe('Frontend — redirect with options', () => {
     const loc = resp.headers()['location'];
     expect(loc).not.toContain('utm_source=should-be-stripped');
     await api.dispose();
+
+    await proveRedirectOnPage(page, slug);
   });
 });

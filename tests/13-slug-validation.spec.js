@@ -2,12 +2,19 @@
  * Short-URL slug validation — REST-level.
  */
 const { test, expect } = require('@playwright/test');
-const { uniqueSlug } = require('../helpers/utils');
+const { uniqueSlug, waitForBLRoot } = require('../helpers/utils');
 const { createLink } = require('../helpers/api');
 
 test.describe('Slug validation — free', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/wp-admin/', { waitUntil: 'domcontentloaded' });
+  });
+
+  test.afterEach(async ({ page }) => {
+    try {
+      await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
+      await waitForBLRoot(page).catch(() => {});
+    } catch { /* best-effort for screenshot */ }
   });
 
   test('very long slug (200 chars) is accepted or trimmed', async ({ page }) => {

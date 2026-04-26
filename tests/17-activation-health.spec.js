@@ -2,6 +2,7 @@
  * Activation health — verify BL created its DB tables + did NOT break WP admin.
  */
 const { test, expect } = require('@playwright/test');
+const { waitForBLRoot } = require('../helpers/utils');
 
 async function getNonce(page) {
   return await page.evaluate(async () => {
@@ -13,6 +14,13 @@ async function getNonce(page) {
 }
 
 test.describe('Plugin activation health', () => {
+  test.afterEach(async ({ page }) => {
+    try {
+      await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
+      await waitForBLRoot(page).catch(() => {});
+    } catch { /* best-effort for screenshot */ }
+  });
+
   test('plugins_loaded → BL class exists (plugin is active)', async ({ page }) => {
     // Indirect check via is_pro_enabled global: if BL didn't load, this would be undefined.
     await page.goto('/wp-admin/admin.php?page=betterlinks', { waitUntil: 'domcontentloaded' });
