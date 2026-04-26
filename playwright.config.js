@@ -9,7 +9,16 @@ module.exports = defineConfig({
   workers: 1,
   timeout: 90_000,
   expect: { timeout: 15_000 },
-  reporter: [['html', { open: 'never' }], ['list']],
+  // html → human-browsable report (in playwright-report/)
+  // list → live console output during the run
+  // json → machine-readable totals for CI summaries (read by workflow step)
+  reporter: [
+    ['html', { open: 'never' }],
+    ['list'],
+    // NOTE: write outside playwright-report/ — the HTML reporter wipes its
+    // own output dir on each run and would delete this file.
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
   globalSetup: require.resolve('./helpers/global-setup.js'),
   globalTeardown: require.resolve('./helpers/global-teardown.js'),
   use: {

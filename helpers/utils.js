@@ -30,9 +30,36 @@ async function handleEmailVerification(page) {
   } catch { /* not shown */ }
 }
 
-/** Wait for BetterLinks React root to attach. */
+/**
+ * Wait for the BetterLinks React app to mount AND finish first render.
+ *
+ * The plugin's PHP outputs an empty `<div id="betterlinksbody"></div>` early
+ * in the page lifecycle, then React hydrates and paints the actual UI a few
+ * hundred ms later. Just waiting for the mount point to attach captures the
+ * page mid-paint, which:
+ *   - makes screenshots look like blank/broken pages
+ *   - causes flake on subsequent locator queries that target rendered content
+ *
+ * This helper waits for:
+ *   1. `#betterlinksbody` to attach (PHP-side mount point ready)
+ *   2. The mount point to have at least one child element (React painted)
+ *   3. Network to settle (initial REST fetches done)
+ *   4. Tiny final settle so animations/transitions finish before screenshot
+ */
 async function waitForBLRoot(page, timeout = 30_000) {
   await page.waitForSelector('#betterlinksbody', { state: 'attached', timeout });
+  // Wait for React to populate the mount with real children.
+  await page.waitForFunction(
+    () => {
+      const root = document.querySelector('#betterlinksbody');
+      return root && root.children.length > 0;
+    },
+    { timeout },
+  ).catch(() => { /* fall through if React never paints — test will catch */ });
+  // Let any in-flight REST fetches settle so the screenshot reflects real data.
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+  // Tiny settle for CSS transitions / paints
+  await page.waitForTimeout(300);
 }
 
 module.exports = {
