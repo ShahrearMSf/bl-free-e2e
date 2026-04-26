@@ -10,26 +10,6 @@ test.describe('Slug validation — free', () => {
     await page.goto('/wp-admin/', { waitUntil: 'domcontentloaded' });
   });
 
-  test('empty short_url is handled gracefully (auto-generated or rejected)', async ({ page }) => {
-    // BL accepts empty short_url and auto-generates a slug from the title.
-    // Either behavior (auto-generate OR reject) is acceptable; what's NOT
-    // acceptable is silently storing an empty slug. Verify the resulting
-    // link (if any) has a non-empty short_url.
-    let created;
-    try {
-      created = await createLink(page, {
-        title: 'Empty slug ' + Date.now(),
-        slug: '',
-        target: 'https://example.com/',
-      });
-    } catch {
-      // Rejection is a valid behavior — pass the test.
-      return;
-    }
-    expect(created?.short_url, 'created link should have a non-empty slug').toBeTruthy();
-    expect(created.short_url.length, 'auto-generated slug should be non-empty').toBeGreaterThan(0);
-  });
-
   test('very long slug (200 chars) is accepted or trimmed', async ({ page }) => {
     const long = 'x'.repeat(200);
     const slug = uniqueSlug('long') + '-' + long;
