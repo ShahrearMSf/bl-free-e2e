@@ -48,18 +48,31 @@ async function handleEmailVerification(page) {
  */
 async function waitForBLRoot(page, timeout = 30_000) {
   await page.waitForSelector('#betterlinksbody', { state: 'attached', timeout });
-  // Wait for React to populate the mount with real children.
+
+  // Wait for React to render *substantive* content — not just the outer
+  // wrapper div, but a meaningful subtree. BL's React components prefix
+  // their classes with `btl-` (or render top-level headings); we wait for
+  // either of those signals to ensure the screenshot captures real UI.
   await page.waitForFunction(
     () => {
       const root = document.querySelector('#betterlinksbody');
-      return root && root.children.length > 0;
+      if (!root) return false;
+      // Substantive content: at least a few descendant elements with BL class
+      // names, OR a top-level heading, OR a non-trivial total element count.
+      const blEls = root.querySelectorAll('[class*="btl-"], [class*="BTL"], h1, h2, h3, button').length;
+      const totalEls = root.querySelectorAll('*').length;
+      return blEls >= 2 || totalEls >= 20;
     },
     { timeout },
-  ).catch(() => { /* fall through if React never paints — test will catch */ });
-  // Let any in-flight REST fetches settle so the screenshot reflects real data.
+  ).catch(() => { /* fall through — some pages (API-only health checks) intentionally don't render */ });
+
+  // Let in-flight REST fetches settle so the screenshot reflects real data.
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
-  // Tiny settle for CSS transitions / paints
-  await page.waitForTimeout(300);
+
+  // Final settle for CSS transitions / late paints. Bumped from 300ms to
+  // 1500ms because slow CI runners need this to capture the rendered UI
+  // (was the cause of blank-content screenshots on Tags & Categories etc.).
+  await page.waitForTimeout(1500);
 }
 
 module.exports = {
